@@ -1,0 +1,34 @@
+:root {
+  --bg: #000000;
+  --bg-soft: #0c0e12;
+  --panel: #14171d;
+  --border: #23272f;
+  --text: #f2f4f8;
+  --muted: #8b93a1;
+  --dim: #5f6672;
+
+  --accent: #D2FF00;
+  --accent-bright: #D2FF00;
+  --accent-soft: #D2FF00;
+  --accent-rgb: 210, 255, 0;
+
+  --transition-grid: #ffffff;
+  --transition-text: #0a0a0a;
+
+  --site-max: 1330px;
+  --site-gutter: 24px;
+  --site-pad-left: 22px;
+  --site-pad-right: 14px;
+  --site-content-left: max(
+    calc(var(--site-gutter) + var(--site-pad-left)),
+    calc((100vw - var(--site-max)) / 2 + var(--site-pad-left))
+  );
+  --site-content-right: max(
+    calc(var(--site-gutter) + var(--site-pad-right)),
+    calc((100vw - var(--site-max)) / 2 + var(--site-pad-right))
+  );
+
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --display: "Space Grotesk", "Inter Variable", system-ui, sans-serif;
+  --sans: "Inter", system-ui, sans-serif;
+}

@@ -1,18 +1,16 @@
-import Hero from '../sections/Hero'
-import LogoCloud from '../sections/LogoCloud'
-import WhatWeDo from '../sections/WhatWeDo'
-import Services from '../sections/Services'
-import WhyChooseUs from '../sections/WhyChooseUs'
-import Faqs from '../sections/Faqs'
-import Contact from '../sections/Contact'
+import Hero from '../sections/home/Hero'
+import WhatWeDo from '../sections/home/WhatWeDo'
+import HowWeHelp from '../sections/home/HowWeHelp'
+import WhyChooseUs from '../sections/home/WhyChooseUs'
+import Faqs from '../sections/shared/Faqs'
+import Contact from '../sections/shared/Contact'
 
 export default function HomePage() {
   return (
     <main>
       <Hero />
-      <LogoCloud />
       <WhatWeDo />
-      <Services />
+      <HowWeHelp />
       <WhyChooseUs />
       <Faqs />
       <Contact />

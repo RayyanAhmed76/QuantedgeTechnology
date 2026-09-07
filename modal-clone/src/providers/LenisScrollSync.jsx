@@ -1,4 +1,4 @@
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { ScrollTrigger } from '../lib/gsap'
 import { useLenis } from 'lenis/react'
 
 export default function LenisScrollSync() {

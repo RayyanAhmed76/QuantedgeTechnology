@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import gsap from 'gsap'
 import CustomEase from 'gsap/CustomEase'
 import SplitText from 'gsap/SplitText'
-import { BRAND } from '../data/site'
+import { BRAND } from '../data'
 
 gsap.registerPlugin(CustomEase, SplitText)
 CustomEase.create('hop', '0.9, 0, 0.1, 1')
@@ -31,6 +31,7 @@ function resolveTo(to, location) {
 
 export default function TransitionProvider({ children }) {
   const gridRef = useRef(null)
+  const textRef = useRef(null)
   const blocksRef = useRef([])
   const headingRef = useRef(null)
   const wordsRef = useRef([])
@@ -62,6 +63,7 @@ export default function TransitionProvider({ children }) {
     const tl = gsap.timeline({ onComplete })
 
     tl.set(gridRef.current, { pointerEvents: 'all' })
+    tl.set(textRef.current, { autoAlpha: 1 })
     tl.set(blocks, { transformOrigin: 'left center', scaleX: 0 })
     if (words?.length) tl.set(words, { y: '100%' })
 
@@ -95,6 +97,7 @@ export default function TransitionProvider({ children }) {
     const tl = gsap.timeline({
       onComplete: () => {
         gsap.set(gridRef.current, { pointerEvents: 'none' })
+        gsap.set(textRef.current, { autoAlpha: 0 })
         onComplete?.()
       },
     })
@@ -171,8 +174,8 @@ export default function TransitionProvider({ children }) {
         ))}
       </div>
 
-      <div className="transition-text" aria-hidden="true">
-        <h1 ref={headingRef}>{BRAND}</h1>
+      <div ref={textRef} className="transition-text" aria-hidden="true">
+        <h1 ref={headingRef}>{BRAND}.</h1>
       </div>
 
       {children}

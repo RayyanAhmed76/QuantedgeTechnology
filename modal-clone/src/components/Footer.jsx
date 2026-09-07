@@ -1,5 +1,6 @@
 import Logo from './Logo'
-import { BRAND, FOOTER_COLS } from '../data/site'
+import TransitionLink from './TransitionLink'
+import { BRAND, FOOTER_COLS } from '../data'
 
 export default function Footer() {
   return (
@@ -12,7 +13,9 @@ export default function Footer() {
           </p>
           <div className="socials">
             {['𝕏', 'in', '#', '◗', '▶'].map((icon) => (
-              <span className="social" key={icon}>{icon}</span>
+              <span className="social" key={icon}>
+                {icon}
+              </span>
             ))}
           </div>
           <p className="copyright">© {BRAND} 2026</p>
@@ -23,8 +26,8 @@ export default function Footer() {
               <h4>{head}</h4>
               <ul>
                 {items.map((item) => (
-                  <li key={item}>
-                    <a href="#services">{item}</a>
+                  <li key={item.to}>
+                    <TransitionLink to={item.to}>{item.label}</TransitionLink>
                   </li>
                 ))}
               </ul>

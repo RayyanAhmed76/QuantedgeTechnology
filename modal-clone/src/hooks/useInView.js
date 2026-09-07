@@ -1,0 +1,26 @@
+import { useEffect, useRef, useState } from 'react'
+
+export default function useInView(options = {}) {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+  const { threshold = 0.2, rootMargin = '0px', once = true } = options
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return
+        setVisible(true)
+        if (once) io.disconnect()
+      },
+      { threshold, rootMargin },
+    )
+
+    io.observe(el)
+    return () => io.disconnect()
+  }, [threshold, rootMargin, once])
+
+  return [ref, visible]
+}

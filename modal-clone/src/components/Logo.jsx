@@ -1,4 +1,4 @@
-import { BRAND } from '../data/site'
+import { BRAND } from '../data'
 
 export default function Logo({ size = 30 }) {
   return (
