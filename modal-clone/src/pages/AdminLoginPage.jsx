@@ -1,6 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { adminLogin, adminMe } from '../lib/api'
+import { adminCaptchaConfig, adminLogin, adminMe } from '../lib/api'
+import { firstErrorKey, validateAdminLogin } from '../lib/formValidation'
+import FieldError from '../components/FieldError'
+
+const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'
+
+function loadTurnstileScript() {
+  if (window.turnstile) return Promise.resolve()
+  const existing = document.querySelector('script[data-turnstile]')
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      existing.addEventListener('load', () => resolve())
+      existing.addEventListener('error', () => reject(new Error('Failed to load captcha')))
+    })
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = TURNSTILE_SCRIPT
+    script.async = true
+    script.dataset.turnstile = 'true'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('Failed to load captcha'))
+    document.head.appendChild(script)
+  })
+}
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -10,7 +34,13 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [pending, setPending] = useState(false)
+  const [captchaSiteKey, setCaptchaSiteKey] = useState('')
+  const [captchaRequired, setCaptchaRequired] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+  const captchaHostRef = useRef(null)
+  const widgetIdRef = useRef(null)
 
   useEffect(() => {
     let alive = true
@@ -29,15 +59,95 @@ export default function AdminLoginPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let alive = true
+    adminCaptchaConfig()
+      .then((data) => {
+        if (!alive) return
+        setCaptchaSiteKey(data.siteKey || '')
+        setCaptchaRequired(Boolean(data.enabled && data.siteKey))
+      })
+      .catch(() => {
+        if (!alive) return
+        setCaptchaSiteKey(import.meta.env.VITE_TURNSTILE_SITE_KEY || '')
+        setCaptchaRequired(Boolean(import.meta.env.VITE_TURNSTILE_SITE_KEY))
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const resetCaptcha = useCallback(() => {
+    setCaptchaToken('')
+    if (widgetIdRef.current != null && window.turnstile) {
+      window.turnstile.reset(widgetIdRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!captchaSiteKey || !captchaHostRef.current) return undefined
+    let cancelled = false
+
+    loadTurnstileScript()
+      .then(() => {
+        if (cancelled || !captchaHostRef.current || !window.turnstile) return
+        if (widgetIdRef.current != null) {
+          window.turnstile.remove(widgetIdRef.current)
+          widgetIdRef.current = null
+        }
+        widgetIdRef.current = window.turnstile.render(captchaHostRef.current, {
+          sitekey: captchaSiteKey,
+          theme: 'dark',
+          callback: (token) => setCaptchaToken(token),
+          'expired-callback': () => setCaptchaToken(''),
+          'error-callback': () => setCaptchaToken(''),
+        })
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Captcha failed to load')
+      })
+
+    return () => {
+      cancelled = true
+      if (widgetIdRef.current != null && window.turnstile) {
+        window.turnstile.remove(widgetIdRef.current)
+        widgetIdRef.current = null
+      }
+    }
+  }, [captchaSiteKey])
+
+  function clearField(name) {
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
+  }
+
   async function onSubmit(event) {
     event.preventDefault()
     setError('')
+    const result = validateAdminLogin({ email, password })
+    setFieldErrors(result.errors)
+    if (!result.ok) {
+      const key = firstErrorKey(result.errors)
+      event.currentTarget.querySelector(`[name="${key}"]`)?.focus()
+      return
+    }
+
+    if (captchaRequired && !captchaToken) {
+      setError('Please complete the captcha')
+      return
+    }
+
     setPending(true)
     try {
-      await adminLogin(email, password)
+      await adminLogin(result.values.email, result.values.password, captchaToken)
       navigate('/admin', { replace: true })
     } catch (err) {
       setError(err.message || 'Login failed')
+      resetCaptcha()
     } finally {
       setPending(false)
     }
@@ -55,30 +165,41 @@ export default function AdminLoginPage() {
 
   return (
     <main className="admin-page admin-login-page">
-      <form className="admin-login-card" onSubmit={onSubmit}>
+      <form className="admin-login-card" onSubmit={onSubmit} noValidate>
         <p className="admin-eyebrow">Admin</p>
         <h1>Sign in</h1>
         <p className="admin-muted">View form submissions and career resumes.</p>
 
-        <label>
+        <label className={fieldErrors.email ? 'has-error' : undefined}>
           Email
           <input
+            name="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
+            onChange={(e) => {
+              setEmail(e.target.value)
+              clearField('email')
+            }}
             autoComplete="username"
+            aria-invalid={Boolean(fieldErrors.email)}
+            aria-describedby={fieldErrors.email ? 'admin-email-error' : undefined}
           />
+          <FieldError id="admin-email-error" message={fieldErrors.email} />
         </label>
-        <label>
+        <label className={fieldErrors.password ? 'has-error' : undefined}>
           Password
           <span className="admin-password-field">
             <input
+              name="password"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={(e) => {
+                setPassword(e.target.value)
+                clearField('password')
+              }}
               autoComplete="current-password"
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? 'admin-password-error' : undefined}
             />
             <button
               type="button"
@@ -101,7 +222,14 @@ export default function AdminLoginPage() {
               )}
             </button>
           </span>
+          <FieldError id="admin-password-error" message={fieldErrors.password} />
         </label>
+
+        {captchaSiteKey ? (
+          <div className="admin-captcha" aria-label="Captcha">
+            <div ref={captchaHostRef} />
+          </div>
+        ) : null}
 
         {error ? <p className="form-error">{error}</p> : null}
 

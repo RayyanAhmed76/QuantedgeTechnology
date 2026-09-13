@@ -3,7 +3,13 @@ import { gsap, useGSAP, ScrollTrigger } from '../../lib/gsap'
 import TransitionLink from '../../components/TransitionLink'
 import { WHAT_WE_DO } from '../../data'
 
+function isExternalHref(href) {
+  return typeof href === 'string' && /^https?:\/\//i.test(href)
+}
+
 function PillarCard({ title, copy, image, href, index }) {
+  const external = isExternalHref(href)
+
   return (
     <div className="card" id={`card-${index + 1}`}>
       <div className="card-inner">
@@ -13,7 +19,16 @@ function PillarCard({ title, copy, image, href, index }) {
             <h2>{title}</h2>
           </div>
           <p>{copy}</p>
-          {href ? (
+          {external ? (
+            <a
+              href={href}
+              className="btn btn-primary card-cta"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn more
+            </a>
+          ) : href ? (
             <TransitionLink to={href} className="btn btn-primary card-cta">
               Learn more
             </TransitionLink>
@@ -45,92 +60,54 @@ export default function WhatWeDo() {
 
       mm.add('(min-width: 901px)', () => {
         const cards = gsap.utils.toArray('.card', root)
-        if (!cards.length) return
+        const intro = root.querySelector('.intro')
+        if (!cards.length || !intro) return
         const lastCard = cards[cards.length - 1]
 
+        // Keep heading fixed (no fade) until the card stack finishes
         ScrollTrigger.create({
-          trigger: cards[0],
-          start: 'top 18%',
+          trigger: intro,
+          start: 'top top',
           endTrigger: lastCard,
-          end: 'top 15%',
-          pin: '.intro',
+          end: '+=15%',
+          pin: true,
           pinSpacing: false,
         })
 
+        // Hard stack: full-viewport pin so previous cards don't peek above.
+        // Cards 1-3 pin until the next covers them; last card holds briefly then releases.
         cards.forEach((card, index) => {
-          const isLastCard = index === cards.length - 1
-          const cardInner = card.querySelector('.card-inner')
+          const isLast = index === cards.length - 1
+          const nextCard = cards[index + 1]
 
-          if (!isLastCard) {
-            ScrollTrigger.create({
-              trigger: card,
-              start: 'top 18%',
-              endTrigger: lastCard,
-              end: 'top 65%',
-              pin: true,
-              pinSpacing: false,
-            })
-
-            gsap.to(cardInner, {
-              y: `-${(cards.length - index) * 10}vh`,
-              ease: 'none',
-              scrollTrigger: {
-                trigger: card,
-                start: 'top 18%',
-                endTrigger: lastCard,
-                end: 'top 65%',
-                scrub: true,
-              },
-            })
-          }
+          ScrollTrigger.create({
+            trigger: card,
+            start: 'top top',
+            endTrigger: isLast ? undefined : nextCard,
+            end: isLast ? '+=15%' : 'top top',
+            pin: true,
+            pinSpacing: isLast,
+          })
         })
       })
 
       mm.add('(max-width: 900px)', () => {
-        const intro = root.querySelector('.intro')
         const cards = gsap.utils.toArray('.card', root)
-        if (!intro || !cards.length) return
+        if (!cards.length) return
 
-        const headingPeek = (card) => {
-          const head = card.querySelector('.card-head')
-          if (!head) return 72
-          return Math.max(
-            64,
-            Math.ceil(head.getBoundingClientRect().bottom - card.getBoundingClientRect().top),
-          )
-        }
-
-        const stackOffset = (index) => {
-          let offset = intro.offsetHeight
-          for (let i = 0; i < index; i += 1) {
-            offset += headingPeek(cards[i])
-          }
-          return offset
-        }
-
-        ScrollTrigger.create({
-          trigger: intro,
-          start: 'top top',
-          endTrigger: cards[cards.length - 1],
-          end: 'bottom top',
-          pin: true,
-          pinSpacing: false,
-          invalidateOnRefresh: true,
-        })
-
+        // Do not pin the intro on mobile — pinning lets card #1 cover "One partner."
+        // Cards still hard-stack; last card holds briefly then releases.
         cards.forEach((card, index) => {
-          const next = cards[index + 1]
           const isLast = index === cards.length - 1
+          const next = cards[index + 1]
 
           ScrollTrigger.create({
             trigger: card,
-            start: () => `top top+=${stackOffset(index)}`,
-            endTrigger: isLast ? card : next,
-            end: isLast
-              ? 'bottom top'
-              : () => `top top+=${stackOffset(index + 1)}`,
+            start: 'top top',
+            endTrigger: isLast ? undefined : next,
+            end: isLast ? '+=15%' : 'top top',
             pin: true,
-            pinSpacing: false,
+            pinSpacing: isLast,
             invalidateOnRefresh: true,
           })
         })

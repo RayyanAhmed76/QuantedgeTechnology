@@ -1,4 +1,4 @@
-import { Navigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import Contact from '../sections/shared/Contact'
 import Faqs from '../sections/shared/Faqs'
 import DigitalGrowthHero from '../sections/services/DigitalGrowthHero'
@@ -12,6 +12,7 @@ import ServiceShowcaseTabs from '../sections/services/ServiceShowcaseTabs'
 import WebSoftwareHero from '../sections/services/WebSoftwareHero'
 import WebSoftwareProcess from '../sections/services/WebSoftwareProcess'
 import WebSoftwareTech from '../sections/services/WebSoftwareTech'
+import NotFoundPage from './NotFoundPage'
 import { SERVICE_PAGES } from '../data'
 
 export default function ServicePage() {
@@ -19,7 +20,7 @@ export default function ServicePage() {
   const service = SERVICE_PAGES[slug]
 
   if (!service) {
-    return <Navigate to="/" replace />
+    return <NotFoundPage />
   }
 
   if (slug === 'digital-growth') {
@@ -60,5 +61,5 @@ export default function ServicePage() {
     )
   }
 
-  return <Navigate to="/" replace />
+  return <NotFoundPage />
 }

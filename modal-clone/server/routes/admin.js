@@ -7,7 +7,9 @@ import {
   clearSessionCookie,
   destroySession,
 } from '../lib/auth.js'
-import { readLocalFileBuffer } from '../storage/local.js'
+import { verifyTurnstileToken } from '../lib/turnstile.js'
+import { config } from '../config.js'
+import { readLocalFileBuffer, deleteLocalFile } from '../storage/local.js'
 
 const router = Router()
 
@@ -15,10 +17,27 @@ const FORM_LABELS = {
   project_inquiry: 'Project inquiry',
   contact_message: 'Contact message',
   career_application: 'Career application',
+  consultancy_inquiry: 'Consultancy',
 }
 
-router.post('/login', (req, res, next) => {
+const FORM_TYPES = Object.keys(FORM_LABELS)
+const SITE_LABELS = {
+  main: 'Main site',
+  consultancy: 'Consultancy',
+}
+
+/** Public site key for admin login widget (safe to expose). */
+router.get('/captcha-config', (_req, res) => {
+  const siteKey = config.turnstileSiteKey || ''
+  res.json({
+    siteKey,
+    enabled: Boolean(siteKey),
+  })
+})
+
+router.post('/login', async (req, res, next) => {
   try {
+    await verifyTurnstileToken(req.body?.captchaToken || req.body?.turnstileToken, req.ip)
     const { admin, session } = loginAdmin(req.body?.email, req.body?.password)
     setSessionCookie(res, session.id)
     res.json({ admin })
@@ -41,12 +60,13 @@ router.get('/me', requireAdmin, (req, res) => {
 router.get('/submissions', requireAdmin, (req, res) => {
   const formType = String(req.query.form_type || '').trim()
   const status = String(req.query.status || '').trim()
+  const site = String(req.query.site || req.query.source_site || '').trim()
   const q = String(req.query.q || '').trim()
 
   const where = []
   const params = {}
 
-  if (['project_inquiry', 'contact_message', 'career_application'].includes(formType)) {
+  if (FORM_TYPES.includes(formType)) {
     where.push('s.form_type = @formType')
     params.formType = formType
   }
@@ -54,16 +74,22 @@ router.get('/submissions', requireAdmin, (req, res) => {
     where.push('s.status = @status')
     params.status = status
   }
+  if (['main', 'consultancy'].includes(site)) {
+    where.push('s.source_site = @site')
+    params.site = site
+  }
   if (q) {
-    where.push('(s.email LIKE @q OR s.name LIKE @q OR IFNULL(s.message, "") LIKE @q)')
+    where.push(
+      "(s.email LIKE @q OR s.name LIKE @q OR IFNULL(s.message, '') LIKE @q OR IFNULL(s.service, '') LIKE @q)",
+    )
     params.q = `%${q.replace(/[%_]/g, '')}%`
   }
 
   const sql = `
     SELECT
       s.id, s.form_type, s.status, s.name, s.first_name, s.last_name,
-      s.email, s.phone, s.message, s.linkedin_url, s.github_url,
-      s.source_path, s.created_at,
+      s.email, s.phone, s.message, s.service, s.linkedin_url, s.github_url,
+      s.source_path, s.source_site, s.created_at,
       f.id AS file_id, f.original_name AS file_name
     FROM submissions s
     LEFT JOIN submission_files f ON f.submission_id = s.id
@@ -76,10 +102,13 @@ router.get('/submissions', requireAdmin, (req, res) => {
     id: row.id,
     formType: row.form_type,
     formLabel: FORM_LABELS[row.form_type] || row.form_type,
+    sourceSite: row.source_site || 'main',
+    sourceSiteLabel: SITE_LABELS[row.source_site] || row.source_site || 'Main site',
     status: row.status,
     name: row.name,
     email: row.email,
     phone: row.phone,
+    service: row.service || null,
     preview: row.message ? String(row.message).slice(0, 140) : null,
     createdAt: row.created_at,
     hasFile: Boolean(row.file_id),
@@ -115,6 +144,8 @@ router.get('/submissions/:id', requireAdmin, (req, res) => {
     id: row.id,
     formType: row.form_type,
     formLabel: FORM_LABELS[row.form_type] || row.form_type,
+    sourceSite: row.source_site || 'main',
+    sourceSiteLabel: SITE_LABELS[row.source_site] || row.source_site || 'Main site',
     status: row.status,
     name: row.name,
     firstName: row.first_name,
@@ -122,6 +153,7 @@ router.get('/submissions/:id', requireAdmin, (req, res) => {
     email: row.email,
     phone: row.phone,
     message: row.message,
+    service: row.service || null,
     linkedinUrl: row.linkedin_url,
     githubUrl: row.github_url,
     privacyAccepted: Boolean(row.privacy_accepted),
@@ -160,6 +192,50 @@ router.patch('/submissions/:id', requireAdmin, (req, res, next) => {
       meta: { status },
     })
     res.json({ ok: true, status })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.delete('/submissions/:id', requireAdmin, (req, res, next) => {
+  try {
+    const id = String(req.params.id || '').trim()
+    const existing = db.prepare('SELECT id, email, form_type FROM submissions WHERE id = ?').get(id)
+    if (!existing) {
+      return res.status(404).json({ error: 'Not found' })
+    }
+
+    const files = db
+      .prepare(
+        `SELECT id, stored_key, storage_backend FROM submission_files WHERE submission_id = ?`,
+      )
+      .all(id)
+
+    for (const file of files) {
+      if (file.storage_backend === 'local') {
+        deleteLocalFile(file.stored_key)
+      }
+    }
+
+    const tx = db.transaction(() => {
+      db.prepare('DELETE FROM submission_files WHERE submission_id = ?').run(id)
+      db.prepare('DELETE FROM submissions WHERE id = ?').run(id)
+    })
+    tx()
+
+    writeAudit({
+      adminId: req.admin.id,
+      action: 'delete_submission',
+      entityType: 'submission',
+      entityId: id,
+      meta: {
+        email: existing.email,
+        formType: existing.form_type,
+        filesRemoved: files.length,
+      },
+    })
+
+    res.json({ ok: true, id })
   } catch (err) {
     next(err)
   }

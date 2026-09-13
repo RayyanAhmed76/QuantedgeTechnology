@@ -32,6 +32,7 @@ function resolveTo(to, location) {
 export default function TransitionProvider({ children }) {
   const gridRef = useRef(null)
   const textRef = useRef(null)
+  const logoRef = useRef(null)
   const blocksRef = useRef([])
   const headingRef = useRef(null)
   const wordsRef = useRef([])
@@ -53,6 +54,9 @@ export default function TransitionProvider({ children }) {
 
     wordsRef.current = splitRef.current.words
     gsap.set(wordsRef.current, { y: '100%' })
+    if (logoRef.current) {
+      gsap.set(logoRef.current, { autoAlpha: 0, y: 18, scale: 0.88 })
+    }
 
     return () => splitRef.current?.revert()
   }, [])
@@ -60,12 +64,14 @@ export default function TransitionProvider({ children }) {
   const animateIn = useCallback((onComplete) => {
     const blocks = blocksRef.current.filter(Boolean)
     const words = wordsRef.current
+    const logo = logoRef.current
     const tl = gsap.timeline({ onComplete })
 
     tl.set(gridRef.current, { pointerEvents: 'all' })
     tl.set(textRef.current, { autoAlpha: 1 })
     tl.set(blocks, { transformOrigin: 'left center', scaleX: 0 })
     if (words?.length) tl.set(words, { y: '100%' })
+    if (logo) tl.set(logo, { autoAlpha: 0, y: 18, scale: 0.88 })
 
     tl.to(blocks, {
       scaleX: 1,
@@ -73,6 +79,20 @@ export default function TransitionProvider({ children }) {
       ease: 'hop',
       stagger: 0.075,
     })
+
+    if (logo) {
+      tl.to(
+        logo,
+        {
+          autoAlpha: 1,
+          y: 0,
+          scale: 1,
+          duration: 0.75,
+          ease: 'power4.out',
+        },
+        '-=0.7',
+      )
+    }
 
     if (words?.length) {
       tl.to(
@@ -83,7 +103,7 @@ export default function TransitionProvider({ children }) {
           ease: 'power4.out',
           stagger: 0.1,
         },
-        '-=0.6',
+        logo ? '-=0.55' : '-=0.6',
       )
     }
 
@@ -93,6 +113,7 @@ export default function TransitionProvider({ children }) {
   const animateOut = useCallback((onComplete) => {
     const blocks = blocksRef.current.filter(Boolean)
     const words = wordsRef.current
+    const logo = logoRef.current
 
     const tl = gsap.timeline({
       onComplete: () => {
@@ -104,13 +125,27 @@ export default function TransitionProvider({ children }) {
 
     tl.set(blocks, { transformOrigin: 'right center', scaleX: 1 })
 
-    if (words?.length) {
-      tl.to(words, {
-        y: '100%',
-        duration: 1,
-        ease: 'power4.out',
-        stagger: 0.1,
+    if (logo) {
+      tl.to(logo, {
+        autoAlpha: 0,
+        y: 14,
+        scale: 0.92,
+        duration: 0.55,
+        ease: 'power3.in',
       })
+    }
+
+    if (words?.length) {
+      tl.to(
+        words,
+        {
+          y: '100%',
+          duration: 1,
+          ease: 'power4.out',
+          stagger: 0.1,
+        },
+        logo ? '-=0.35' : 0,
+      )
     }
 
     tl.to(
@@ -121,7 +156,7 @@ export default function TransitionProvider({ children }) {
         ease: 'hop',
         stagger: 0.075,
       },
-      words?.length ? '-=1' : 0,
+      words?.length || logo ? '-=1' : 0,
     )
 
     return tl
@@ -175,7 +210,12 @@ export default function TransitionProvider({ children }) {
       </div>
 
       <div ref={textRef} className="transition-text" aria-hidden="true">
-        <h1 ref={headingRef}>{BRAND}.</h1>
+        <div className="transition-brand">
+          <span className="transition-logo-anchor">
+            <span ref={logoRef} className="transition-logo" aria-hidden="true" />
+          </span>
+          <h1 ref={headingRef}>{BRAND}.</h1>
+        </div>
       </div>
 
       {children}

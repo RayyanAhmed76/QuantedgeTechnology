@@ -42,6 +42,16 @@ export function readLocalFileBuffer(storedKey) {
   return fs.readFileSync(full)
 }
 
+/** Best-effort remove; missing files are ignored. */
+export function deleteLocalFile(storedKey) {
+  try {
+    const full = absolutePathForKey(storedKey)
+    if (fs.existsSync(full)) fs.unlinkSync(full)
+  } catch {
+    /* ignore path/fs errors so DB delete can still proceed */
+  }
+}
+
 export function sha256(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex')
 }

@@ -1,0 +1,14 @@
+.prismatic-burst-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  /* Hint compositor — canvas is the only painted child */
+  contain: strict;
+  transform: translateZ(0);
+}
+
+.prismatic-burst-container canvas {
+  image-rendering: auto;
+}

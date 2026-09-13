@@ -49,13 +49,18 @@ export async function submitCareer(formData) {
   return parseJson(res)
 }
 
-export async function adminLogin(email, password) {
+export async function adminLogin(email, password, captchaToken = '') {
   const res = await fetch('/api/admin/login', {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, captchaToken }),
   })
+  return parseJson(res)
+}
+
+export async function adminCaptchaConfig() {
+  const res = await fetch('/api/admin/captcha-config', { credentials: 'include' })
   return parseJson(res)
 }
 
@@ -92,6 +97,14 @@ export async function adminUpdateStatus(id, status) {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status }),
+  })
+  return parseJson(res)
+}
+
+export async function adminDeleteSubmission(id) {
+  const res = await fetch(`/api/admin/submissions/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
   })
   return parseJson(res)
 }

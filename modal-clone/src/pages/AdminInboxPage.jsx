@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import {
+  adminDeleteSubmission,
   adminFetchFileBlob,
   adminGetSubmission,
   adminListSubmissions,
@@ -14,6 +15,13 @@ const TYPE_OPTIONS = [
   { value: 'project_inquiry', label: 'Project inquiry' },
   { value: 'contact_message', label: 'Contact message' },
   { value: 'career_application', label: 'Career application' },
+  { value: 'consultancy_inquiry', label: 'Consultancy' },
+]
+
+const SITE_OPTIONS = [
+  { value: '', label: 'All sites' },
+  { value: 'main', label: 'Main site' },
+  { value: 'consultancy', label: 'Consultancy site' },
 ]
 
 const STATUS_OPTIONS = [
@@ -33,11 +41,13 @@ export default function AdminInboxPage() {
   const [detail, setDetail] = useState(null)
   const [error, setError] = useState('')
   const [formType, setFormType] = useState('')
+  const [site, setSite] = useState('')
   const [status, setStatus] = useState('')
   const [q, setQ] = useState('')
   const [previewUrl, setPreviewUrl] = useState('')
   const [previewName, setPreviewName] = useState('')
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const externalPreviewUrlsRef = useRef([])
 
   function closePreview() {
@@ -105,7 +115,7 @@ export default function AdminInboxPage() {
       const url = URL.createObjectURL(blob)
       const name = detail.file.originalName || 'resume.pdf'
 
-      // Mobile browsers can't reliably scroll PDFs inside iframes — use native viewer
+      // Mobile browsers can't reliably scroll PDFs inside iframes; use native viewer
       if (prefersNativePdfViewer()) {
         const tab = window.open(url, '_blank')
         if (tab) {
@@ -147,7 +157,7 @@ export default function AdminInboxPage() {
   async function loadList() {
     setError('')
     try {
-      const data = await adminListSubmissions({ form_type: formType, status, q })
+      const data = await adminListSubmissions({ form_type: formType, status, site, q })
       setItems(data.items || [])
     } catch (err) {
       setError(err.message || 'Failed to load submissions')
@@ -161,7 +171,7 @@ export default function AdminInboxPage() {
     if (!admin) return
     loadList()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [admin, formType, status])
+  }, [admin, formType, status, site])
 
   useEffect(() => {
     if (!selectedId || !admin) {
@@ -202,6 +212,30 @@ export default function AdminInboxPage() {
     }
   }
 
+  async function onDelete() {
+    if (!detail || deleting) return
+    const label = detail.email || detail.name || 'this submission'
+    const confirmed = window.confirm(
+      `Delete ${label} permanently?\n\nThis cannot be undone. Attached resumes will be removed too.`,
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    setError('')
+    try {
+      const id = detail.id
+      await adminDeleteSubmission(id)
+      closePreview()
+      setItems((prev) => prev.filter((item) => item.id !== id))
+      setSelectedId(null)
+      setDetail(null)
+    } catch (err) {
+      setError(err.message || 'Could not delete submission')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   function onSearch(event) {
     event.preventDefault()
     loadList()
@@ -220,15 +254,15 @@ export default function AdminInboxPage() {
   return (
     <main className="admin-page">
       <header className="admin-top">
-        <div>
+        <div className="admin-top-bar">
           <p className="admin-eyebrow">Inbox</p>
-          <h1>Submissions</h1>
-        </div>
-        <div className="admin-top-actions">
-          <span className="admin-muted">{admin.email}</span>
-          <button type="button" className="btn btn-ghost" onClick={onLogout}>
+          <button type="button" className="btn btn-ghost admin-logout" onClick={onLogout}>
             Log out
           </button>
+        </div>
+        <div className="admin-top-main">
+          <h1>Submissions</h1>
+          <span className="admin-muted admin-top-email">{admin.email}</span>
         </div>
       </header>
 
@@ -236,6 +270,13 @@ export default function AdminInboxPage() {
         <select value={formType} onChange={(e) => setFormType(e.target.value)}>
           {TYPE_OPTIONS.map((opt) => (
             <option key={opt.value || 'all-types'} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <select value={site} onChange={(e) => setSite(e.target.value)}>
+          {SITE_OPTIONS.map((opt) => (
+            <option key={opt.value || 'all-sites'} value={opt.value}>
               {opt.label}
             </option>
           ))}
@@ -326,6 +367,18 @@ export default function AdminInboxPage() {
               </div>
               <dl className="admin-dl">
                 <div>
+                  <dt>Source</dt>
+                  <dd>
+                    <span
+                      className={`admin-badge ${
+                        detail.sourceSite === 'consultancy' ? 'site-consultancy' : 'site-main'
+                      }`}
+                    >
+                      {detail.sourceSiteLabel || detail.sourceSite || 'Main site'}
+                    </span>
+                  </dd>
+                </div>
+                <div>
                   <dt>Name</dt>
                   <dd>{detail.name || '-'}</dd>
                 </div>
@@ -339,6 +392,12 @@ export default function AdminInboxPage() {
                   <dt>Phone</dt>
                   <dd>{detail.phone || '-'}</dd>
                 </div>
+                {detail.service ? (
+                  <div>
+                    <dt>Service</dt>
+                    <dd>{detail.service}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>Received</dt>
                   <dd>{detail.createdAt}</dd>
@@ -374,12 +433,22 @@ export default function AdminInboxPage() {
                 <button
                   type="button"
                   className="btn btn-primary"
-                  disabled={previewLoading}
+                  disabled={previewLoading || deleting}
                   onClick={openResume}
                 >
                   {previewLoading ? 'Opening…' : `View ${detail.file.originalName}`}
                 </button>
               ) : null}
+              <div className="admin-detail-actions">
+                <button
+                  type="button"
+                  className="btn admin-delete-btn"
+                  disabled={deleting}
+                  onClick={onDelete}
+                >
+                  {deleting ? 'Deleting…' : 'Delete record'}
+                </button>
+              </div>
               {selected?.preview && !detail.message ? (
                 <p className="admin-muted">{selected.preview}</p>
               ) : null}
@@ -389,7 +458,9 @@ export default function AdminInboxPage() {
       </div>
 
       <p className="admin-foot">
-        <Link to="/">← Back to site</Link>
+        <Link to="/" className="btn btn-ghost admin-back-link">
+          Back to site
+        </Link>
       </p>
 
       {previewUrl ? (
@@ -407,7 +478,13 @@ export default function AdminInboxPage() {
                 Close
               </button>
             </div>
-            <iframe title={previewName} src={previewUrl} className="admin-preview-frame" />
+            <iframe
+              title={previewName}
+              src={previewUrl}
+              className="admin-preview-frame"
+              sandbox=""
+              referrerPolicy="no-referrer"
+            />
           </div>
         </div>
       ) : null}

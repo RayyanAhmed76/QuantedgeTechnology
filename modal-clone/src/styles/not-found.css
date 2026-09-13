@@ -1,0 +1,80 @@
+/* ---------- Branded 404 ---------- */
+.not-found-page {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  min-height: calc(100svh - 120px);
+  padding: clamp(72px, 12vh, 120px) var(--site-gutter) 96px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.not-found-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 0%, rgba(var(--accent-rgb), 0.14), transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 80%, rgba(255, 255, 255, 0.04), transparent 55%),
+    linear-gradient(180deg, #050607 0%, var(--bg) 100%);
+}
+
+.not-found-inner {
+  width: min(100%, 720px);
+  text-align: center;
+}
+
+.not-found-brand {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(18px, 2.4vw, 22px);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.not-found-code {
+  margin: clamp(20px, 4vw, 36px) 0 0;
+  font-family: var(--display);
+  font-size: clamp(88px, 18vw, 160px);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+  color: var(--accent);
+  user-select: none;
+}
+
+.not-found-title {
+  margin: 18px 0 0;
+  font-family: var(--display);
+  font-size: clamp(28px, 4.5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.not-found-dot {
+  color: var(--accent);
+}
+
+.not-found-copy {
+  margin: 16px auto 0;
+  max-width: 38ch;
+  font-size: clamp(15px, 1.6vw, 17px);
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.not-found-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.not-found-actions .btn {
+  text-decoration: none;
+}

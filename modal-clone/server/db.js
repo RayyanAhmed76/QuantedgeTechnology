@@ -17,7 +17,8 @@ db.exec(`
     form_type TEXT NOT NULL CHECK (form_type IN (
       'project_inquiry',
       'contact_message',
-      'career_application'
+      'career_application',
+      'consultancy_inquiry'
     )),
     status TEXT NOT NULL DEFAULT 'new' CHECK (status IN (
       'new', 'reviewed', 'archived', 'spam'
@@ -28,12 +29,14 @@ db.exec(`
     email TEXT NOT NULL,
     phone TEXT,
     message TEXT,
+    service TEXT,
     linkedin_url TEXT,
     github_url TEXT,
     privacy_accepted INTEGER NOT NULL DEFAULT 0,
     ip_hash TEXT,
     user_agent TEXT,
     source_path TEXT,
+    source_site TEXT NOT NULL DEFAULT 'main' CHECK (source_site IN ('main', 'consultancy')),
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -84,17 +87,112 @@ db.exec(`
   );
 `)
 
-export function ensureAdminSeeded() {
-  const email = config.adminEmail.toLowerCase().trim()
-  const passwordHash = bcrypt.hashSync(config.adminPassword, 12)
-  const existing = db.prepare('SELECT id FROM admins WHERE email = ?').get(email)
+function tableSql(name) {
+  const row = db.prepare(`SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`).get(name)
+  return row?.sql || ''
+}
 
-  if (existing) {
-    db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(passwordHash, existing.id)
-    console.log(`Synced admin credentials for: ${email}`)
+function columnNames(table) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)
+}
+
+/** Migrate existing DBs: source_site, consultancy_inquiry, service column. */
+function migrateSubmissionsSchema() {
+  const sql = tableSql('submissions')
+  if (!sql) return
+
+  const cols = columnNames('submissions')
+  const needsSite = !cols.includes('source_site')
+  const needsConsultancyType = !sql.includes('consultancy_inquiry')
+
+  if (needsSite || needsConsultancyType) {
+    db.exec(`
+      PRAGMA foreign_keys = OFF;
+      BEGIN;
+      CREATE TABLE submissions_mig (
+        id TEXT PRIMARY KEY,
+        form_type TEXT NOT NULL CHECK (form_type IN (
+          'project_inquiry',
+          'contact_message',
+          'career_application',
+          'consultancy_inquiry'
+        )),
+        status TEXT NOT NULL DEFAULT 'new' CHECK (status IN (
+          'new', 'reviewed', 'archived', 'spam'
+        )),
+        name TEXT,
+        first_name TEXT,
+        last_name TEXT,
+        email TEXT NOT NULL,
+        phone TEXT,
+        message TEXT,
+        service TEXT,
+        linkedin_url TEXT,
+        github_url TEXT,
+        privacy_accepted INTEGER NOT NULL DEFAULT 0,
+        ip_hash TEXT,
+        user_agent TEXT,
+        source_path TEXT,
+        source_site TEXT NOT NULL DEFAULT 'main' CHECK (source_site IN ('main', 'consultancy')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO submissions_mig (
+        id, form_type, status, name, first_name, last_name, email, phone, message,
+        service, linkedin_url, github_url, privacy_accepted, ip_hash, user_agent, source_path,
+        source_site, created_at, updated_at
+      )
+      SELECT
+        id, form_type, status, name, first_name, last_name, email, phone, message,
+        ${cols.includes('service') ? 'service' : 'NULL'},
+        linkedin_url, github_url, privacy_accepted, ip_hash, user_agent, source_path,
+        ${needsSite ? `'main'` : `IFNULL(source_site, 'main')`},
+        created_at, updated_at
+      FROM submissions;
+      DROP TABLE submissions;
+      ALTER TABLE submissions_mig RENAME TO submissions;
+      CREATE INDEX IF NOT EXISTS idx_submissions_type_created
+        ON submissions(form_type, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_submissions_email
+        ON submissions(email);
+      CREATE INDEX IF NOT EXISTS idx_submissions_status
+        ON submissions(status);
+      CREATE INDEX IF NOT EXISTS idx_submissions_site_created
+        ON submissions(source_site, created_at DESC);
+      COMMIT;
+      PRAGMA foreign_keys = ON;
+    `)
+    console.log('[db] Migrated submissions schema (source_site / consultancy_inquiry / service)')
     return
   }
 
+  if (!cols.includes('service')) {
+    db.exec(`ALTER TABLE submissions ADD COLUMN service TEXT`)
+    console.log('[db] Added submissions.service column')
+  }
+}
+
+migrateSubmissionsSchema()
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_submissions_site_created
+    ON submissions(source_site, created_at DESC);
+`)
+
+export function ensureAdminSeeded() {
+  const email = config.adminEmail.toLowerCase().trim()
+  const existing = db.prepare('SELECT id FROM admins WHERE email = ?').get(email)
+
+  if (existing) {
+    if (config.adminPasswordSync) {
+      const passwordHash = bcrypt.hashSync(config.adminPassword, 12)
+      db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(passwordHash, existing.id)
+      console.log(`Synced admin credentials for: ${email} (ADMIN_PASSWORD_SYNC=1)`)
+    }
+    return
+  }
+
+  const passwordHash = bcrypt.hashSync(config.adminPassword, 12)
   const id = crypto.randomUUID()
   db.prepare(
     `INSERT INTO admins (id, email, password_hash) VALUES (?, ?, ?)`,

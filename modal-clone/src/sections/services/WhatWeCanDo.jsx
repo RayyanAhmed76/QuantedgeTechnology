@@ -81,7 +81,7 @@ export default function WhatWeCanDo({ items, image }) {
       <div className="wwcd-visual" aria-hidden="true">
         <img
           className="wwcd-visual-img"
-          src={image || '/assets/marketing-asset-2.png'}
+          src={image || '/assets/marketing-asset-2.webp'}
           alt=""
           loading="lazy"
         />

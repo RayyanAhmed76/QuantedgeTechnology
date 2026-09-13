@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { usePageTransition } from '../providers/TransitionProvider'
 
 function isModifiedClick(event) {
@@ -7,6 +7,7 @@ function isModifiedClick(event) {
 
 export default function TransitionLink({ to, onClick, children, ...rest }) {
   const { transitionTo } = usePageTransition()
+  const location = useLocation()
 
   return (
     <Link
@@ -17,6 +18,13 @@ export default function TransitionLink({ to, onClick, children, ...rest }) {
         if (event.defaultPrevented || isModifiedClick(event) || rest.target === '_blank') return
         event.preventDefault()
         event.stopPropagation()
+        const path = typeof to === 'string' ? to : to?.pathname
+        if (path === '/privacy' || path === '/cookie-policy') {
+          const current = location.pathname + location.search
+          if (current !== '/privacy' && current !== '/cookie-policy') {
+            sessionStorage.setItem('qe-return-to', current)
+          }
+        }
         transitionTo(to)
       }}
     >

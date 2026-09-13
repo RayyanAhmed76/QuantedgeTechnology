@@ -28,6 +28,8 @@ const SERVICE_ICONS = {
 function pathMatches(pathname, to) {
   if (!to) return false
   if (to === '/') return pathname === '/'
+  // Overview hub should not stay active on /services/:slug
+  if (to === '/services') return pathname === '/services'
   return pathname === to || pathname.startsWith(`${to}/`)
 }
 
@@ -37,11 +39,15 @@ export default function Navbar() {
   const [openMenu, setOpenMenu] = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileServicesOpen, setMobileServicesOpen] = useState(false)
+  /** Sub-item highlighted in the drawer (e.g. All Services) without navigating yet */
+  const [mobileServiceFocus, setMobileServiceFocus] = useState(null)
   const dropdownRef = useRef(null)
 
-  const servicesActive = NAV.some(
-    (item) => item.children?.some((child) => pathMatches(pathname, child.to)),
-  )
+  const servicesActive =
+    pathname === '/services' ||
+    NAV.some((item) =>
+      item.children?.some((child) => pathMatches(pathname, child.to)),
+    )
   const contactActive = pathMatches(pathname, '/contact')
 
   useLenis(({ scroll, direction }) => {
@@ -91,12 +97,25 @@ export default function Navbar() {
   }, [mobileOpen])
 
   useEffect(() => {
-    if (servicesActive) setMobileServicesOpen(true)
+    if (servicesActive) {
+      setMobileServicesOpen(true)
+      setMobileServiceFocus(null)
+    }
   }, [servicesActive])
 
   function closeMobile() {
     setMobileOpen(false)
     setMobileServicesOpen(servicesActive)
+    setMobileServiceFocus(null)
+  }
+
+  function toggleMobileServicesOverview() {
+    setMobileServicesOpen((open) => {
+      const next = !open
+      // Preview-select All Services only when not already on a services page
+      setMobileServiceFocus(next && !servicesActive ? '/services' : null)
+      return next
+    })
   }
 
   return (
@@ -118,22 +137,19 @@ export default function Navbar() {
                   onMouseEnter={() => setOpenMenu(item.label)}
                   onMouseLeave={() => setOpenMenu(null)}
                 >
-                  <button
-                    type="button"
+                  <TransitionLink
+                    to={item.to || '/services'}
                     className={`nav-parent${servicesActive ? ' is-active' : ''}`}
                     aria-haspopup="menu"
                     aria-expanded={openMenu === item.label}
                     aria-current={servicesActive ? 'true' : undefined}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      setOpenMenu((current) => (current === item.label ? null : item.label))
-                    }}
+                    onClick={() => setOpenMenu(null)}
                   >
                     {item.label}
                     <span className="nav-caret" aria-hidden="true">
                       ▾
                     </span>
-                  </button>
+                  </TransitionLink>
                   <ul className="nav-dropdown" role="menu">
                     {item.children.map((child) => {
                       const active = pathMatches(pathname, child.to)
@@ -223,27 +239,56 @@ export default function Navbar() {
           {NAV.map((item) =>
             item.children ? (
               <li key={item.label} className="nav-drawer-item">
-                <button
-                  type="button"
-                  className={`nav-drawer-parent${mobileServicesOpen ? ' is-open' : ''}${
+                <div
+                  className={`nav-drawer-parent-row${mobileServicesOpen ? ' is-open' : ''}${
                     servicesActive ? ' is-active' : ''
                   }`}
-                  aria-expanded={mobileServicesOpen}
-                  aria-current={servicesActive ? 'true' : undefined}
-                  onClick={() => setMobileServicesOpen((open) => !open)}
                 >
-                  {item.label}
-                  <span aria-hidden="true">▾</span>
-                </button>
-                <ul className={`nav-drawer-sub${mobileServicesOpen ? ' is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className={`nav-drawer-parent-link${
+                      servicesActive || mobileServicesOpen ? ' is-active' : ''
+                    }`}
+                    aria-expanded={mobileServicesOpen}
+                    aria-controls="nav-drawer-services-sub"
+                    onClick={toggleMobileServicesOverview}
+                  >
+                    {item.label}
+                  </button>
+                  <button
+                    type="button"
+                    className={`nav-drawer-parent-toggle${mobileServicesOpen ? ' is-open' : ''}`}
+                    aria-expanded={mobileServicesOpen}
+                    aria-controls="nav-drawer-services-sub"
+                    aria-label={mobileServicesOpen ? 'Hide services menu' : 'Show services menu'}
+                    onClick={() => {
+                      setMobileServicesOpen((open) => {
+                        const next = !open
+                        setMobileServiceFocus(next && !servicesActive ? '/services' : null)
+                        return next
+                      })
+                    }}
+                  >
+                    <span aria-hidden="true">▾</span>
+                  </button>
+                </div>
+                <ul
+                  id="nav-drawer-services-sub"
+                  className={`nav-drawer-sub${mobileServicesOpen ? ' is-open' : ''}`}
+                >
                   {item.children.map((child) => {
-                    const active = pathMatches(pathname, child.to)
+                    const routeActive = pathMatches(pathname, child.to)
+                    const previewActive =
+                      Boolean(mobileServiceFocus) &&
+                      mobileServiceFocus === child.to &&
+                      !servicesActive
+                    const active = routeActive || previewActive
                     return (
                       <li key={child.to}>
                         <TransitionLink
                           to={child.to}
                           className={active ? 'is-active' : undefined}
-                          aria-current={active ? 'page' : undefined}
+                          aria-current={routeActive ? 'page' : undefined}
                           onClick={closeMobile}
                         >
                           <span className="nav-drawer-sub-title">{child.label}</span>

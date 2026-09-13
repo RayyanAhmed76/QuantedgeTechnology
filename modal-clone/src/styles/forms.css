@@ -4,6 +4,43 @@
   font-size: 14px;
 }
 
+.field-error {
+  display: block;
+  margin: 0;
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+label.has-error input,
+label.has-error textarea,
+label.has-error .career-file-btn {
+  border-color: rgba(252, 165, 165, 0.65) !important;
+}
+
+label.has-error input:focus,
+label.has-error textarea:focus {
+  box-shadow: 0 0 0 1px rgba(252, 165, 165, 0.45);
+}
+
+.contact-check.has-error {
+  align-items: flex-start;
+}
+
+.contact-privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.contact-privacy.has-error .contact-check {
+  color: #fca5a5 !important;
+}
+
+
+
 .toast {
   position: fixed;
   left: 50%;
@@ -65,3 +102,191 @@
   height: 1px !important;
   overflow: hidden !important;
 }
+
+.form-captcha {
+  margin: 0.75rem 0 1rem;
+  min-height: 65px;
+}
+
+.privacy-inline-link {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.privacy-inline-link:hover {
+  color: #fff;
+}
+
+.privacy-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.72);
+  overscroll-behavior: none;
+}
+
+.privacy-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(86vh, 820px);
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #12151a;
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  outline: none;
+}
+
+.privacy-modal-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.privacy-modal-heading h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.privacy-modal-updated {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.privacy-modal-close {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.privacy-modal-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.privacy-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 22px 28px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.privacy-modal-intro {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.privacy-modal-section {
+  margin: 0 0 18px;
+}
+
+.privacy-modal-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.privacy-modal-section h4 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.privacy-modal-section p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.privacy-modal-section p:last-child {
+  margin-bottom: 0;
+}
+
+.privacy-modal-meta {
+  margin: 12px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.privacy-modal-meta > div {
+  display: grid;
+  gap: 2px;
+}
+
+.privacy-modal-meta dt {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.privacy-modal-meta dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.privacy-modal-meta a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.privacy-modal-meta a:hover {
+  text-decoration: underline;
+}
+
+html.privacy-modal-open,
+html.privacy-modal-open body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (max-width: 640px) {
+  .privacy-modal-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .privacy-modal {
+    width: 100%;
+    max-height: none;
+    height: 100%;
+    border-radius: 0;
+  }
+}
+

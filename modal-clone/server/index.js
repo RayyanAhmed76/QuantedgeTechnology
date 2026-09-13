@@ -22,7 +22,12 @@ app.use(
 )
 app.use(
   cors({
-    origin: config.corsOrigin,
+    origin(origin, callback) {
+      // Non-browser / same-origin tools may omit Origin
+      if (!origin) return callback(null, true)
+      if (config.corsOrigins.includes(origin)) return callback(null, true)
+      return callback(null, false)
+    },
     credentials: true,
   }),
 )
@@ -50,6 +55,15 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true })
 })
 
+const careerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many submissions. Try again later.' },
+})
+
+app.use('/api/submissions/career', careerLimiter)
 app.use('/api/submissions', formLimiter, publicRoutes)
 app.use('/api/admin/login', loginLimiter)
 app.use('/api/admin', adminRoutes)

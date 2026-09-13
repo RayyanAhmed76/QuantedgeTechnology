@@ -3,6 +3,9 @@ import bcrypt from 'bcryptjs'
 import { db, writeAudit } from '../db.js'
 import { config } from '../config.js'
 
+/** Constant-time-ish compare when user is missing (avoid login timing oracle). */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('__quantedge-invalid-login__', 12)
+
 function expiryIso(ms = config.sessionTtlMs) {
   return new Date(Date.now() + ms).toISOString().replace('T', ' ').slice(0, 19)
 }
@@ -45,7 +48,9 @@ export function loginAdmin(email, password) {
   const admin = db
     .prepare('SELECT id, email, password_hash FROM admins WHERE email = ?')
     .get(String(email || '').trim().toLowerCase())
-  if (!admin || !bcrypt.compareSync(String(password || ''), admin.password_hash)) {
+  const hash = admin?.password_hash || DUMMY_PASSWORD_HASH
+  const matches = bcrypt.compareSync(String(password || ''), hash)
+  if (!admin || !matches) {
     throw Object.assign(new Error('Invalid email or password'), { status: 401 })
   }
   db.prepare(`UPDATE admins SET last_login_at = datetime('now') WHERE id = ?`).run(admin.id)
@@ -69,12 +74,12 @@ export function setSessionCookie(res, sessionId) {
   res.cookie(config.cookieName, sessionId, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: config.isProduction,
     maxAge: config.sessionTtlMs,
-    path: '/',
+    path: config.cookiePath,
   })
 }
 
 export function clearSessionCookie(res) {
-  res.clearCookie(config.cookieName, { path: '/' })
+  res.clearCookie(config.cookieName, { path: config.cookiePath })
 }

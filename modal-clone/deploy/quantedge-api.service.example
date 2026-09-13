@@ -1,0 +1,17 @@
+[Unit]
+Description=QuantEdgeDataSolutions API
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/quantedge
+Environment=NODE_ENV=production
+EnvironmentFile=/var/www/quantedge/.env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=3
+# Bind is via API_PORT in .env (default 8787). Keep firewall closed to the world.
+
+[Install]
+WantedBy=multi-user.target

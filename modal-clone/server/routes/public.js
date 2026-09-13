@@ -3,9 +3,15 @@ import multer from 'multer'
 import crypto from 'node:crypto'
 import { db, hashIp } from '../db.js'
 import { config } from '../config.js'
-import { validateProject, validateContact, validateCareer } from '../lib/validate.js'
+import {
+  validateProject,
+  validateContact,
+  validateCareer,
+  validateConsultancy,
+} from '../lib/validate.js'
 import { validateResume } from '../lib/files.js'
 import { buildStoredKey, putLocalFile, sha256 } from '../storage/local.js'
+import { verifyTurnstileToken } from '../lib/turnstile.js'
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -26,11 +32,11 @@ function insertSubmission(data, extras) {
   const id = crypto.randomUUID()
   db.prepare(
     `INSERT INTO submissions (
-      id, form_type, name, first_name, last_name, email, phone, message,
-      linkedin_url, github_url, privacy_accepted, ip_hash, user_agent, source_path
+      id, form_type, name, first_name, last_name, email, phone, message, service,
+      linkedin_url, github_url, privacy_accepted, ip_hash, user_agent, source_path, source_site
     ) VALUES (
-      @id, @formType, @name, @firstName, @lastName, @email, @phone, @message,
-      @linkedinUrl, @githubUrl, @privacyAccepted, @ipHash, @userAgent, @sourcePath
+      @id, @formType, @name, @firstName, @lastName, @email, @phone, @message, @service,
+      @linkedinUrl, @githubUrl, @privacyAccepted, @ipHash, @userAgent, @sourcePath, @sourceSite
     )`,
   ).run({
     id,
@@ -41,19 +47,65 @@ function insertSubmission(data, extras) {
     email: data.email,
     phone: data.phone || null,
     message: data.message || null,
+    service: data.service || null,
     linkedinUrl: data.linkedinUrl || null,
     githubUrl: data.githubUrl || null,
     privacyAccepted: data.privacyAccepted || 0,
     ipHash: extras.ipHash,
     userAgent: extras.userAgent,
     sourcePath: extras.sourcePath || null,
+    sourceSite: data.sourceSite || 'main',
   })
   return id
 }
 
-router.post('/project', (req, res, next) => {
+function requireConsultancySiteKey(req, res, next) {
+  if (!config.consultancySiteKey) {
+    return res.status(503).json({ error: 'Consultancy intake is not configured' })
+  }
+  const key = String(req.get('x-site-key') || req.get('x-consultancy-key') || '').trim()
+  const expected = config.consultancySiteKey
+  const a = Buffer.from(key)
+  const b = Buffer.from(expected)
+  const ok =
+    a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b)
+  if (!ok) {
+    return res.status(401).json({ error: 'Invalid or missing site key' })
+  }
+  return next()
+}
+
+function isHoneypot(body) {
+  return Boolean(String(body?.company_website || body?.website || '').trim())
+}
+
+async function requirePublicCaptcha(req, _res, next) {
   try {
-    if (req.body?.company_website) {
+    if (!config.publicFormCaptcha) return next()
+    const token =
+      req.body?.captchaToken ||
+      req.body?.turnstileToken ||
+      req.get('x-captcha-token') ||
+      ''
+    await verifyTurnstileToken(token, req.ip)
+    next()
+  } catch (err) {
+    next(err)
+  }
+}
+
+/** Public site key for optional form captcha (safe to expose). */
+router.get('/captcha-config', (_req, res) => {
+  const enabled = Boolean(config.publicFormCaptcha && config.turnstileSiteKey)
+  res.json({
+    siteKey: enabled ? config.turnstileSiteKey : '',
+    enabled,
+  })
+})
+
+router.post('/project', requirePublicCaptcha, (req, res, next) => {
+  try {
+    if (isHoneypot(req.body)) {
       return res.status(201).json({ id: crypto.randomUUID(), ok: true })
     }
     const data = validateProject(req.body || {})
@@ -64,9 +116,9 @@ router.post('/project', (req, res, next) => {
   }
 })
 
-router.post('/contact', (req, res, next) => {
+router.post('/contact', requirePublicCaptcha, (req, res, next) => {
   try {
-    if (req.body?.company_website) {
+    if (isHoneypot(req.body)) {
       return res.status(201).json({ id: crypto.randomUUID(), ok: true })
     }
     const data = validateContact(req.body || {})
@@ -77,9 +129,10 @@ router.post('/contact', (req, res, next) => {
   }
 })
 
-router.post('/career', upload.single('resume'), async (req, res, next) => {
+router.post('/career', upload.single('resume'), requirePublicCaptcha, async (req, res, next) => {
   try {
-    if (req.body?.company_website) {
+    if (isHoneypot(req.body)) {
+      // File stays in memory only (multer memoryStorage) — never written to disk
       return res.status(201).json({ id: crypto.randomUUID(), ok: true })
     }
     const data = validateCareer(req.body || {})
@@ -98,6 +151,24 @@ router.post('/career', upload.single('resume'), async (req, res, next) => {
     ).run(fileId, id, file.originalName, storedKey, file.mimeType, file.sizeBytes, digest)
 
     res.status(201).json({ id })
+  } catch (err) {
+    next(err)
+  }
+})
+
+/**
+ * Consultancy website forms.
+ * Requires header: X-Site-Key: <CONSULTANCY_SITE_KEY>
+ * Prefer sending this key from a server/BFF — never ship it as VITE_/NEXT_PUBLIC_ in production.
+ */
+router.post('/consultancy', requireConsultancySiteKey, (req, res, next) => {
+  try {
+    if (isHoneypot(req.body)) {
+      return res.status(201).json({ id: crypto.randomUUID(), ok: true })
+    }
+    const data = validateConsultancy(req.body || {})
+    const id = insertSubmission(data, meta(req))
+    res.status(201).json({ id, sourceSite: 'consultancy' })
   } catch (err) {
     next(err)
   }

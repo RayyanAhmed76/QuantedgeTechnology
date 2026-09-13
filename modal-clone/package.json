@@ -8,7 +8,8 @@
     "dev:api": "node --watch server/index.js",
     "build": "vite build",
     "preview": "vite preview",
-    "start:api": "node server/index.js"
+    "start:api": "node server/index.js",
+    "optimize-images": "node scripts/optimize-images.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "sharp": "^0.34.2",
     "vite": "^5.4.11"
   }
 }

@@ -67,6 +67,12 @@ export default function DataWhatWeDeliver({ data }) {
 
   if (!data) return null
 
+  const accent = data.headingAccent || ''
+  const base =
+    accent && data.heading.endsWith(accent)
+      ? data.heading.slice(0, -accent.length).trimEnd()
+      : data.heading
+
   const toggle = (index) => {
     if (!isMobile) return
     setOpenIndex((current) => (current === index ? null : index))
@@ -77,7 +83,15 @@ export default function DataWhatWeDeliver({ data }) {
       <div className="ds-deliver-inner">
         <header className="ds-deliver-header">
           <p className="ds-overline">{data.overline}</p>
-          <h2>{data.heading}</h2>
+          <h2>
+            {base}
+            {accent ? (
+              <>
+                {' '}
+                <span className="ds-deliver-accent">{accent}</span>
+              </>
+            ) : null}
+          </h2>
         </header>
 
         <div className="ds-deliver-grid">

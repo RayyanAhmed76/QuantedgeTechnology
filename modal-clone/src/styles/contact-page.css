@@ -1,18 +1,19 @@
 /* ---------- Contact page ---------- */
 .contact-page {
   padding: 0 0 100px;
+  background: var(--bg);
 }
 .contact-hero {
   position: relative;
   width: 100%;
-  aspect-ratio: 3.4 / 1;
-  min-height: 260px;
-  max-height: 420px;
+  min-height: clamp(380px, 52vw, 620px);
+  height: clamp(380px, 52vw, 620px);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   isolation: isolate;
+  margin-bottom: clamp(-140px, -16vw, -100px);
 }
 .contact-hero-img {
   position: absolute;
@@ -20,20 +21,61 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
-  opacity: 0.58;
+  object-position: center 32%;
+  opacity: 0.68;
   display: block;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 55%,
+    rgba(0, 0, 0, 0.75) 68%,
+    rgba(0, 0, 0, 0.35) 82%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    #000 55%,
+    rgba(0, 0, 0, 0.75) 68%,
+    rgba(0, 0, 0, 0.35) 82%,
+    transparent 100%
+  );
 }
 .contact-hero-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.42);
   pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.5) 0%,
+      rgba(0, 0, 0, 0.24) 28%,
+      rgba(0, 0, 0, 0.28) 55%,
+      rgba(0, 0, 0, 0.55) 72%,
+      rgba(0, 0, 0, 0.9) 90%,
+      #000 100%
+    );
+}
+.contact-hero-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 42%;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.35) 28%,
+    rgba(0, 0, 0, 0.8) 65%,
+    #000 100%
+  );
 }
 .contact-hero-title {
   position: relative;
   z-index: 1;
-  margin: 0;
+  margin: 0 0 clamp(72px, 10vw, 120px);
   font-family: var(--display);
   font-size: clamp(36px, 6.5vw, 72px);
   font-weight: 600;
@@ -44,8 +86,10 @@
   padding: 0 24px;
 }
 .contact-page-inner {
+  position: relative;
+  z-index: 2;
   width: min(var(--site-max), calc(100% - 48px));
-  margin: 48px auto 0;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.75fr);
   gap: 28px;
@@ -60,6 +104,7 @@
   height: 100%;
   padding: 40px 40px 36px;
   border: 1px solid var(--border);
+  background: #000;
 }
 .contact-page-form {
   display: flex;
@@ -144,6 +189,7 @@
   padding: 24px 22px;
   box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
   background: var(--panel);
   overflow: hidden;
 }
@@ -194,13 +240,8 @@ a.contact-info-value:hover {
   .contact-page {
     padding: 0 0 120px;
   }
-  .contact-hero {
-    aspect-ratio: 3.6 / 1;
-    max-height: 460px;
-  }
   .contact-page-inner {
     width: min(var(--site-max), calc(100% - 64px));
-    margin-top: 56px;
     gap: 32px;
   }
   .contact-page-form-card {
@@ -209,8 +250,12 @@ a.contact-info-value:hover {
 }
 @media (max-width: 1023px) {
   .contact-hero {
-    aspect-ratio: 2.2 / 1;
-    min-height: 280px;
+    min-height: clamp(320px, 70vw, 480px);
+    height: clamp(320px, 70vw, 480px);
+    margin-bottom: -72px;
+  }
+  .contact-hero-title {
+    margin-bottom: 64px;
   }
   .contact-page-inner {
     grid-template-columns: 1fr;

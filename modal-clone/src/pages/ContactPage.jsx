@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { CONTACT_DETAILS } from '../data'
 import { submitContact } from '../lib/api'
+import { firstErrorKey, validateContactPage } from '../lib/formValidation'
+import FieldError from '../components/FieldError'
+import FormCaptcha from '../components/FormCaptcha'
 import Toast from '../components/Toast'
 
 function ContactIcon({ name }) {
@@ -50,24 +53,53 @@ function ContactIcon({ name }) {
 export default function ContactPage() {
   const [toast, setToast] = useState('')
   const [error, setError] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
   const [pending, setPending] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
+
+  function clearField(name) {
+    setFieldErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
+  }
 
   async function onSubmit(event) {
     event.preventDefault()
     setError('')
-    setPending(true)
     const formEl = event.currentTarget
     const form = new FormData(formEl)
+    const result = validateContactPage({
+      firstName: form.get('firstName'),
+      lastName: form.get('lastName'),
+      email: form.get('email'),
+      phone: form.get('phone'),
+      message: form.get('message'),
+    })
+
+    setFieldErrors(result.errors)
+    if (!result.ok) {
+      const key = firstErrorKey(result.errors)
+      formEl.querySelector(`[name="${key}"]`)?.focus()
+      return
+    }
+
+    setPending(true)
     try {
       await submitContact({
-        firstName: form.get('firstName'),
-        lastName: form.get('lastName'),
-        email: form.get('email'),
-        phone: form.get('phone'),
-        message: form.get('message'),
+        firstName: result.values.firstName,
+        lastName: result.values.lastName,
+        email: result.values.email,
+        phone: result.values.phone,
+        message: result.values.message,
         company_website: form.get('company_website'),
+        captchaToken,
       })
       formEl.reset()
+      setFieldErrors({})
+      setCaptchaToken('')
       setToast('Thanks, we received your message. A teammate will be in touch shortly.')
     } catch (err) {
       setError(err.message || 'Could not send. Please try again.')
@@ -81,63 +113,105 @@ export default function ContactPage() {
       <section className="contact-hero" aria-label="Contact Us">
         <img
           className="contact-hero-img"
-          src="/assets/contact-us.jpg"
+          src="/assets/contact-us.webp"
           alt=""
           loading="eager"
         />
         <div className="contact-hero-overlay" aria-hidden="true" />
+        <div className="contact-hero-fade" aria-hidden="true" />
         <h1 className="contact-hero-title">Contact Us</h1>
       </section>
 
       <div className="contact-page-inner">
         <div className="contact-page-form-card">
-          <form className="contact-page-form" onSubmit={onSubmit}>
-              <h2>
-                Send us a <span className="contact-page-accent">message</span>.
-              </h2>
+          <form className="contact-page-form" onSubmit={onSubmit} noValidate>
+            <h2>
+              Send us a <span className="contact-page-accent">message</span>.
+            </h2>
 
-              <label className="hp-field" aria-hidden="true">
-                Company website
-                <input name="company_website" type="text" tabIndex={-1} autoComplete="off" />
-              </label>
+            <label className="hp-field" aria-hidden="true">
+              Company website
+              <input name="company_website" type="text" tabIndex={-1} autoComplete="off" />
+            </label>
 
-              <div className="contact-page-row">
-                <label>
-                  First name
-                  <input name="firstName" type="text" required placeholder="Enter your first name" />
-                </label>
-                <label>
-                  Last name
-                  <input name="lastName" type="text" required placeholder="Enter your last name" />
-                </label>
-              </div>
-
-              <label>
-                Email
-                <input name="email" type="email" required placeholder="yourname@gmail.com" />
-              </label>
-
-              <label>
-                Phone number
-                <input name="phone" type="tel" required placeholder="+1 234 567 890" />
-              </label>
-
-              <label>
-                Message
-                <textarea
-                  name="message"
-                  required
-                  rows={5}
-                  placeholder="Enter your message"
+            <div className="contact-page-row">
+              <label className={fieldErrors.firstName ? 'has-error' : undefined}>
+                First name
+                <input
+                  name="firstName"
+                  type="text"
+                  placeholder="Enter your first name"
+                  autoComplete="given-name"
+                  aria-invalid={Boolean(fieldErrors.firstName)}
+                  aria-describedby={fieldErrors.firstName ? 'cp-first-error' : undefined}
+                  onChange={() => clearField('firstName')}
                 />
+                <FieldError id="cp-first-error" message={fieldErrors.firstName} />
               </label>
+              <label className={fieldErrors.lastName ? 'has-error' : undefined}>
+                Last name
+                <input
+                  name="lastName"
+                  type="text"
+                  placeholder="Enter your last name"
+                  autoComplete="family-name"
+                  aria-invalid={Boolean(fieldErrors.lastName)}
+                  aria-describedby={fieldErrors.lastName ? 'cp-last-error' : undefined}
+                  onChange={() => clearField('lastName')}
+                />
+                <FieldError id="cp-last-error" message={fieldErrors.lastName} />
+              </label>
+            </div>
 
-              {error ? <p className="form-error">{error}</p> : null}
+            <label className={fieldErrors.email ? 'has-error' : undefined}>
+              Email
+              <input
+                name="email"
+                type="email"
+                placeholder="yourname@gmail.com"
+                autoComplete="email"
+                aria-invalid={Boolean(fieldErrors.email)}
+                aria-describedby={fieldErrors.email ? 'cp-email-error' : undefined}
+                onChange={() => clearField('email')}
+              />
+              <FieldError id="cp-email-error" message={fieldErrors.email} />
+            </label>
 
-              <button type="submit" className="btn btn-primary contact-page-submit" disabled={pending}>
-                {pending ? 'Sending…' : 'Send'}
-              </button>
-            </form>
+            <label className={fieldErrors.phone ? 'has-error' : undefined}>
+              Phone number
+              <input
+                name="phone"
+                type="tel"
+                placeholder="+1 234 567 890"
+                autoComplete="tel"
+                aria-invalid={Boolean(fieldErrors.phone)}
+                aria-describedby={fieldErrors.phone ? 'cp-phone-error' : undefined}
+                onChange={() => clearField('phone')}
+              />
+              <FieldError id="cp-phone-error" message={fieldErrors.phone} />
+            </label>
+
+            <label className={fieldErrors.message ? 'has-error' : undefined}>
+              Message
+              <textarea
+                name="message"
+                rows={5}
+                placeholder="Enter your message"
+                aria-invalid={Boolean(fieldErrors.message)}
+                aria-describedby={fieldErrors.message ? 'cp-message-error' : undefined}
+                onChange={() => clearField('message')}
+              />
+              <FieldError id="cp-message-error" message={fieldErrors.message} />
+            </label>
+
+            {error ? <p className="form-error">{error}</p> : null}
+
+            <FormCaptcha onTokenChange={setCaptchaToken} />
+
+            <button type="submit" className="btn btn-primary contact-page-submit" disabled={pending}>
+              {pending ? 'Sending…' : 'Send'}
+            </button>
+          </form>
         </div>
 
         <aside className="contact-page-aside" aria-label="Contact details">

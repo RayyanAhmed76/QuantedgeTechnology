@@ -90,3 +90,52 @@ export function validateCareer(body) {
     privacyAccepted: 0,
   }
 }
+
+/** Consultancy site contact / inquiry form (tagged source_site=consultancy). */
+export function validateConsultancy(body) {
+  honeypotOk(body)
+
+  let name = clean(body.name ?? body.fullName ?? body.full_name)
+  if (!name) {
+    const firstName = clean(body.firstName ?? body.first_name)
+    const lastName = clean(body.lastName ?? body.last_name)
+    if (firstName || lastName) {
+      name = `${firstName} ${lastName}`.trim()
+    }
+  }
+  name = requireLen(name, { max: 120, label: 'Name' })
+
+  const phoneRaw = clean(body.phone)
+  const phoneValue = phoneRaw ? phone(body.phone) : null
+
+  let message = requireLen(body.message ?? body.project ?? body.inquiry, {
+    max: 5000,
+    label: 'Message',
+  })
+  const company = clean(body.company ?? body.organization)
+  if (company) {
+    if (company.length > 160) {
+      throw Object.assign(new Error('Company must be at most 160 characters'), { status: 400 })
+    }
+    message = `Company: ${company}\n\n${message}`
+  }
+
+  const service = requireLen(body.service ?? body.guidance ?? body.serviceInterest, {
+    max: 200,
+    label: 'Service',
+  })
+
+  const privacy =
+    body.privacy === true || body.privacy === 'on' || body.privacy === 'true' || body.privacy === 1
+
+  return {
+    formType: 'consultancy_inquiry',
+    name,
+    email: email(body.email),
+    phone: phoneValue,
+    message,
+    service,
+    privacyAccepted: privacy ? 1 : 0,
+    sourceSite: 'consultancy',
+  }
+}

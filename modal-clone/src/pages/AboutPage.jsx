@@ -19,7 +19,7 @@ export default function AboutPage() {
       <div className="about-banner">
         <img
           className="about-banner-img"
-          src="/assets/about-us.png"
+          src="/assets/about-us.webp"
           alt=""
           loading="lazy"
         />
