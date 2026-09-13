@@ -1,0 +1,8 @@
+export { BRAND } from './brand'
+export { NAV } from './nav'
+export { WHAT_WE_DO, JOURNEY_STEPS, REASONS, FAQS } from './home'
+export { SERVICE_PAGES } from './services'
+export { ABOUT_STATEMENTS } from './about'
+export { CONTACT_DETAILS } from './contact'
+export { CAREER } from './career'
+export { FOOTER_COLS, FOOTER_SOCIALS } from './footer'
