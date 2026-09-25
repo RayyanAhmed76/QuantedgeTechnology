@@ -1,0 +1,14 @@
+node_modules
+dist
+data
+.git
+.env
+*.md
+src
+public
+deploy
+scripts
+index.html
+vite.config.js
+vercel.json
+.dockerignore

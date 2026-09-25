@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { adminCaptchaConfig, adminLogin, adminMe } from '../lib/api'
 import { firstErrorKey, validateAdminLogin } from '../lib/formValidation'
 import FieldError from '../components/FieldError'
@@ -155,8 +155,13 @@ export default function AdminLoginPage() {
 
   if (checking) {
     return (
-      <main className="admin-page">
-        <p className="admin-muted">Checking session…</p>
+      <main className="admin-page admin-login-page">
+        <div className="admin-login-shell">
+          <Link to="/" className="admin-login-home">
+            ← Back to home
+          </Link>
+          <p className="admin-muted">Checking session…</p>
+        </div>
       </main>
     )
   }
@@ -165,10 +170,14 @@ export default function AdminLoginPage() {
 
   return (
     <main className="admin-page admin-login-page">
-      <form className="admin-login-card" onSubmit={onSubmit} noValidate>
-        <p className="admin-eyebrow">Admin</p>
-        <h1>Sign in</h1>
-        <p className="admin-muted">View form submissions and career resumes.</p>
+      <div className="admin-login-shell">
+        <Link to="/" className="admin-login-home">
+          ← Back to home
+        </Link>
+        <form className="admin-login-card" onSubmit={onSubmit} noValidate>
+          <p className="admin-eyebrow">Admin</p>
+          <h1>Sign in</h1>
+          <p className="admin-muted">View form submissions and career resumes.</p>
 
         <label className={fieldErrors.email ? 'has-error' : undefined}>
           Email
@@ -237,6 +246,7 @@ export default function AdminLoginPage() {
           {pending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      </div>
     </main>
   )
 }

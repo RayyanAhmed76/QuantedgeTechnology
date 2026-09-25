@@ -1,4 +1,13 @@
-# Production deploy (AWS EC2)
+# Production deploy
+
+**Current recommended hosting:** Vercel (frontends) + Railway (API).  
+See **[DEPLOY-VERCEL-RAILWAY.md](./DEPLOY-VERCEL-RAILWAY.md)** for the full checklist.
+
+The sections below describe the older **AWS EC2** layout (still valid if you use a VPS).
+
+---
+
+## Production deploy (AWS EC2)
 
 This guide covers what the repo is ready for. You still provision AWS, DNS, and secrets.
 

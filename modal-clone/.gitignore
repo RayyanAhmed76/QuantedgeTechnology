@@ -4,7 +4,6 @@ dist
 *.local
 .env
 .env.*
-data/
 uploads/
 *.sqlite
 *.sqlite-*

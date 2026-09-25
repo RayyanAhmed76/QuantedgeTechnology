@@ -1,0 +1,14 @@
+# Railway: deploy only the Express API (SQLite + uploads on a volume at /data).
+# Dashboard: Root Directory = modal-clone (if repo is fello-clone monorepo).
+# Attach a volume mounted at /data and set DB_PATH / UPLOAD_ROOT (see .env.example).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.railway"
+
+[deploy]
+startCommand = "node server/index.js"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30

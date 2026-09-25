@@ -1,20 +1,36 @@
 /* ---------- Page transition (block reveal) ---------- */
 .transition-grid {
   position: fixed;
+  inset: 0;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
+  /* dvh tracks mobile URL bar; svh/vh fallbacks for older browsers */
+  height: 100vh;
   height: 100svh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   pointer-events: none;
   z-index: 9998;
   overflow: hidden;
+  /* Fully inert when idle — prevents leftover fragments after wipe-out */
+  visibility: hidden;
+}
+
+.transition-grid.is-active {
+  visibility: visible;
 }
 
 .transition-block {
-  flex: 1;
+  flex: 1 1 0;
   width: 100%;
+  min-height: 0;
   background-color: var(--transition-grid);
   transform: scaleX(0);
   transform-origin: left center;
@@ -23,10 +39,18 @@
 
 .transition-text {
   position: fixed;
+  inset: 0;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
+  height: 100vh;
   height: 100svh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   align-items: center;

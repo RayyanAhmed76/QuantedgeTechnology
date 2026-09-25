@@ -29,7 +29,8 @@ const adminPasswordSync = process.env.ADMIN_PASSWORD_SYNC === '1'
 
 export const config = {
   isProduction,
-  port: Number(process.env.API_PORT || 8787),
+  // Railway/Render inject PORT; local/dev uses API_PORT
+  port: Number(process.env.PORT || process.env.API_PORT || 8787),
   corsOrigins,
   dbPath: process.env.DB_PATH || path.join(root, 'data', 'app.sqlite'),
   uploadRoot: process.env.UPLOAD_ROOT || path.join(root, 'data', 'uploads'),

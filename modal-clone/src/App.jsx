@@ -11,6 +11,7 @@ import AutoScrollReveal from './components/AutoScrollReveal'
 import CookieConsent from './components/CookieConsent'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import DocumentTitle from './components/DocumentTitle'
+import ScrollToTop from './components/ScrollToTop'
 import AppRoutes from './routes/AppRoutes'
 
 function Shell() {
@@ -26,11 +27,13 @@ function Shell() {
     )
   }
 
+  // Lenis must wrap TransitionProvider so transitionTo can call lenis.scrollTo
   return (
-    <TransitionProvider>
-      <ReactLenis root options={{ autoRaf: true }}>
+    <ReactLenis root options={{ autoRaf: true, syncTouch: true }}>
+      <TransitionProvider>
         <PrivacyProvider>
           <LenisScrollSync />
+          <ScrollToTop />
           <DocumentTitle />
           <div className="app">
             <Navbar />
@@ -41,8 +44,8 @@ function Shell() {
           <CookieConsent />
           <GoogleAnalytics />
         </PrivacyProvider>
-      </ReactLenis>
-    </TransitionProvider>
+      </TransitionProvider>
+    </ReactLenis>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback, createContext, useContext } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useLenis } from 'lenis/react'
 import gsap from 'gsap'
 import CustomEase from 'gsap/CustomEase'
 import SplitText from 'gsap/SplitText'
@@ -29,6 +30,29 @@ function resolveTo(to, location) {
   return new URL(`${pathname}${search}${hash}`, window.location.origin)
 }
 
+function hideOverlay(grid, text, blocks) {
+  if (grid) {
+    grid.classList.remove('is-active')
+    gsap.set(grid, { pointerEvents: 'none', visibility: 'hidden' })
+  }
+  if (text) {
+    gsap.set(text, { autoAlpha: 0, visibility: 'hidden' })
+  }
+  if (blocks?.length) {
+    gsap.set(blocks, { scaleX: 0, clearProps: 'transformOrigin' })
+  }
+}
+
+function showOverlay(grid, text) {
+  if (grid) {
+    grid.classList.add('is-active')
+    gsap.set(grid, { pointerEvents: 'all', visibility: 'visible' })
+  }
+  if (text) {
+    gsap.set(text, { autoAlpha: 1, visibility: 'visible' })
+  }
+}
+
 export default function TransitionProvider({ children }) {
   const gridRef = useRef(null)
   const textRef = useRef(null)
@@ -41,10 +65,19 @@ export default function TransitionProvider({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const locationRef = useRef(location)
+  const lenis = useLenis()
+  const lenisRef = useRef(lenis)
   locationRef.current = location
+  lenisRef.current = lenis
 
   useEffect(() => {
-    if (!headingRef.current) return
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!headingRef.current) return undefined
 
     splitRef.current = new SplitText(headingRef.current, {
       type: 'words',
@@ -58,7 +91,20 @@ export default function TransitionProvider({ children }) {
       gsap.set(logoRef.current, { autoAlpha: 0, y: 18, scale: 0.88 })
     }
 
+    // Ensure overlay starts fully inert (no leftover from HMR / interrupted tweens)
+    hideOverlay(gridRef.current, textRef.current, blocksRef.current.filter(Boolean))
+
     return () => splitRef.current?.revert()
+  }, [])
+
+  const scrollToTop = useCallback(() => {
+    const instance = lenisRef.current
+    if (instance) {
+      instance.scrollTo(0, { immediate: true })
+    }
+    window.scrollTo(0, 0)
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
   }, [])
 
   const animateIn = useCallback((onComplete) => {
@@ -67,8 +113,7 @@ export default function TransitionProvider({ children }) {
     const logo = logoRef.current
     const tl = gsap.timeline({ onComplete })
 
-    tl.set(gridRef.current, { pointerEvents: 'all' })
-    tl.set(textRef.current, { autoAlpha: 1 })
+    showOverlay(gridRef.current, textRef.current)
     tl.set(blocks, { transformOrigin: 'left center', scaleX: 0 })
     if (words?.length) tl.set(words, { y: '100%' })
     if (logo) tl.set(logo, { autoAlpha: 0, y: 18, scale: 0.88 })
@@ -117,8 +162,7 @@ export default function TransitionProvider({ children }) {
 
     const tl = gsap.timeline({
       onComplete: () => {
-        gsap.set(gridRef.current, { pointerEvents: 'none' })
-        gsap.set(textRef.current, { autoAlpha: 0 })
+        hideOverlay(gridRef.current, textRef.current, blocks)
         onComplete?.()
       },
     })
@@ -182,17 +226,20 @@ export default function TransitionProvider({ children }) {
       try {
         await new Promise((resolve) => animateIn(resolve))
         navigate(nextPath + url.hash)
-        window.scrollTo(0, 0)
+        scrollToTop()
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+        scrollToTop()
         if (url.hash) {
           document.querySelector(url.hash)?.scrollIntoView()
         }
         await new Promise((resolve) => animateOut(resolve))
+      } catch {
+        hideOverlay(gridRef.current, textRef.current, blocksRef.current.filter(Boolean))
       } finally {
         busyRef.current = false
       }
     },
-    [navigate, animateIn, animateOut],
+    [navigate, animateIn, animateOut, scrollToTop],
   )
 
   return (
