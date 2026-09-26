@@ -2,19 +2,18 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": null,
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://quantedgedatasolution-website-production.up.railway.app"
+      "destination": "https://quantedgedatasolution-website-production.up.railway.app/api/:path*"
     },
     {
       "source": "/consultancy",
-      "destination": "https://quantedge-consultancy.vercel.app"
+      "destination": "https://quantedge-consultancy.vercel.app/consultancy"
     },
     {
       "source": "/consultancy/:path*",
-      "destination": "https://REPLACE_WITH_CONSULTANCY_VERCEL_URL/consultancy/:path*"
+      "destination": "https://quantedge-consultancy.vercel.app/consultancy/:path*"
     },
     {
       "source": "/((?!assets/).*)",
