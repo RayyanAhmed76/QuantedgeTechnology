@@ -482,7 +482,6 @@ export default function AdminInboxPage() {
               title={previewName}
               src={previewUrl}
               className="admin-preview-frame"
-              sandbox=""
               referrerPolicy="no-referrer"
             />
           </div>
